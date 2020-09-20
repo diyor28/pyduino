@@ -1,0 +1,14 @@
+[Unit]
+Description=My service
+After=network.target
+
+[Service]
+ExecStart=sudo bash start.sh
+WorkingDirectory=/usr/pyduino/back/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
