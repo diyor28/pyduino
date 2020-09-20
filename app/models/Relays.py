@@ -9,5 +9,4 @@ class Relays(Base):
 	id = Column(Integer, primary_key=True, index=True)
 	label = Column(String)
 	pin = Column(Integer, unique=True, index=True)
-	pair_id = Column(Integer, unique=True, index=True)
 	disabled = Column(Boolean, default=False)

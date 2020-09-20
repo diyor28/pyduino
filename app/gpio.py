@@ -4,8 +4,8 @@ except ImportError:
 	class GPIO:
 		BOARD = None
 		OUT = "OUTPUT"
-		LOW = 'OFF'
-		HIGH = 'ON'
+		LOW = 'ON'
+		HIGH = 'OFF'
 
 		@classmethod
 		def setmode(cls, mode):
@@ -21,15 +21,15 @@ except ImportError:
 			print(pin, value)
 
 GPIO.setmode(GPIO.BOARD)
+for pin_setup in [11, 13, 15, 16, 18, 29, 31, 36]:
+	GPIO.setup(pin_setup, GPIO.OUT)
 
 
 class Relay:
-	def __init__(self, pin):
-		GPIO.setup(pin, GPIO.OUT)
-		self.pin = pin
+	@classmethod
+	def turn_on(cls, pin):
+		GPIO.output(pin, GPIO.LOW)
 
-	def turn_on(self):
-		GPIO.output(self.pin, GPIO.LOW)
-
-	def turn_off(self):
-		GPIO.output(self.pin, GPIO.HIGH)
+	@classmethod
+	def turn_off(cls, pin):
+		GPIO.output(pin, GPIO.HIGH)

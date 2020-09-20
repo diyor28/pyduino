@@ -10,6 +10,7 @@ class InputValidator(BaseModel):
 	location: str
 	disabled: Optional[bool]
 	pair: Optional[int]
+	relay_id: Optional[int]
 	low_threshold: Optional[float]
 	high_threshold: Optional[float]
 	delta: Optional[float]

@@ -10,7 +10,7 @@ from aioserial import AioSerial
 from serial.tools import list_ports
 from sqlalchemy import event
 from app.database import get_db
-from app.models import Sensor, Temperature
+from app.models import Sensor, Temperature, Relays
 from app.gpio import Relay
 
 RTD_A = 3.9083e-3
@@ -74,6 +74,7 @@ class SerialPortWrapper:
 
 class Readers:
 	sensors: List[Sensor]
+	relays: List[Relays]
 	__current_value: List[dict] = []
 
 	def __init__(self):
@@ -82,6 +83,7 @@ class Readers:
 
 	async def setup(self):
 		self.sensors = get_db().query(Sensor).all()
+		self.relays = get_db().query(Relays).all()
 		self.__running = await self.serial_port.connect_to_serial()
 
 	@classmethod
@@ -100,33 +102,35 @@ class Readers:
 	def read_from_stream(self) -> List:
 		return self.__current_value
 
-	@staticmethod
-	def get_sensor(sensors: List[Sensor], pk: int) -> Union[None, Sensor]:
-		sensor = [item for item in sensors if item.id == pk]
-		if not len(sensor):
-			return
-		return sensor[0]
+	def get_sensor(self, pk: int) -> Union[None, Sensor]:
+		return next((item for item in self.sensors if item.id == pk and not item.disabled), None)
+
+	def get_relay(self, pk: int) -> Union[None, Relays]:
+		return next((item for item in self.relays if item.id == pk and not item.disabled), None)
 
 	async def post_process(self, readings: List[dict]):
 		if not len(readings):
 			return
-		sensors: List[Sensor] = [item for item in self.sensors if not item.disabled]
 		for reading in readings:
-			sensor = self.get_sensor(sensors, reading['sensor_id'])
-			if sensor is None:
+			slave_sensor = self.get_sensor(reading['sensor_id'])
+			if slave_sensor is None or slave_sensor.pair is None:
 				continue
-			pair_sensor = self.get_sensor(sensors, sensor.pair)
-			if pair_sensor is None:
+			master_sensor = self.get_sensor(slave_sensor.pair)
+			if master_sensor is None:
 				continue
-			sensor_temp = next((item for item in readings if item['sensor_id'] == sensor.id), None)
-			pair_sensor_temp = next((item for item in readings if item['sensor_id'] == pair_sensor.id), None)
+			sensor_temp = next((item for item in readings if item['sensor_id'] == slave_sensor.id), None)
+			pair_sensor_temp = next((item for item in readings if item['sensor_id'] == master_sensor.id), None)
+			if sensor_temp is None or pair_sensor_temp is None:
+				continue
 			delta = abs(sensor_temp['temperature'] - pair_sensor_temp['temperature'])
-			print(delta, sensor.label, pair_sensor.label)
-			if delta > sensor.delta:
-				Relay(16).turn_on()
-				print('FIRING RELAY')
+			print(delta, slave_sensor.label, master_sensor.label)
+			relay = self.get_relay(slave_sensor.relay_id)
+			if relay is None:
+				continue
+			if delta > slave_sensor.delta:
+				Relay.turn_on(relay.pin)
 			else:
-				Relay(16).turn_off()
+				Relay.turn_off(relay.pin)
 
 	@staticmethod
 	def temp_from_rtd(rtd: float, sensor: Sensor) -> float:
@@ -208,6 +212,25 @@ def remove_sensor(mapper, db, instance):
 	for idx, sensor in enumerate(readers.sensors):
 		if sensor.id == instance.id:
 			readers.sensors.pop(idx)
+
+
+@event.listens_for(Relays, 'after_insert')
+def add_relay(mapper, db, instance):
+	readers.relays.append(instance)
+
+
+@event.listens_for(Relays, 'after_update')
+def update_relay(mapper, db, instance):
+	for idx, relay in enumerate(readers.relays):
+		if relay.id == instance.id:
+			readers.relays[idx] = instance
+
+
+@event.listens_for(Relays, 'after_delete')
+def remove_relay(mapper, db, instance):
+	for idx, relay in enumerate(readers.relays):
+		if relay.id == instance.id:
+			readers.relays.pop(idx)
 
 
 if __name__ == '__main__':
