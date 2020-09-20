@@ -123,8 +123,10 @@ class Readers:
 			delta = abs(sensor_temp['temperature'] - pair_sensor_temp['temperature'])
 			print(delta, sensor.label, pair_sensor.label)
 			if delta > sensor.delta:
-				Relay(8).fire()
+				Relay(16).turn_on()
 				print('FIRING RELAY')
+			else:
+				Relay(16).turn_off()
 
 	@staticmethod
 	def temp_from_rtd(rtd: float, sensor: Sensor) -> float:
@@ -166,7 +168,6 @@ class Readers:
 				await asyncio.sleep(2)
 			values: List[dict] = await self.serial_port.read()
 			if type(values) is str:
-				print(str)
 				continue
 			result = []
 			for item in values:
