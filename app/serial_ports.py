@@ -42,7 +42,8 @@ class SerialPortWrapper:
 		if port is None:
 			print(f"Could not find any serial device. Retrying in {RETRY_IN} seconds...")
 			await asyncio.sleep(RETRY_IN)
-			await self.connect_to_serial()
+			return await self.connect_to_serial()
+		print(port)
 		try:
 			self.serial_port: AioSerial = AioSerial(port=port, baudrate=BAUD_RATE, bytesize=8, timeout=2, stopbits=aioserial.STOPBITS_ONE)
 		except serial.SerialException as e:
