@@ -59,13 +59,21 @@ class SerialPortWrapper:
 			message: str = (await self.serial_port.readline_async()).decode('Ascii')
 		except serial.SerialException as e:
 			print(e, self.serial_port.port)
+			print(f"Retrying in {RETRY_IN} seconds...")
 			self.failed_reads += 1
+			await asyncio.sleep(RETRY_IN)
+			return await self.read()
+		except UnicodeDecodeError as e:
+			print(e, self.serial_port.port)
+			print(f"Retrying in {RETRY_IN} seconds...")
+			self.failed_reads += 1
+			await asyncio.sleep(RETRY_IN)
+			return await self.read()
+		finally:
 			if self.failed_reads > MAX_FAILED_ATTEMPTS:
 				print(f'more than {MAX_FAILED_ATTEMPTS} failed attempts. Retrying to connect.')
 				self.serial_port.close()
 				await self.connect_to_serial()
-			await asyncio.sleep(2)
-			return await self.read()
 		try:
 			print('message', message)
 			result = json.loads(message)
