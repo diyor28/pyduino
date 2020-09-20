@@ -38,7 +38,7 @@ class SerialPortWrapper:
 
 	async def connect_to_serial(self):
 		ports = list_ports.comports()
-		port = next((item.device for item in ports if re.match(r'COM\d+', item.device) or re.match(r'ttyACM\d+', item.device)), None)
+		port = next((item.device for item in ports if re.match(r'COM\d+', item.device) or re.match(r'/dev/ttyACM\d+', item.device)), None)
 		if port is None:
 			print(f"Could not find any serial device. Retrying in {RETRY_IN} seconds...")
 			await asyncio.sleep(RETRY_IN)
