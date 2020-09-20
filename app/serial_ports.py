@@ -2,6 +2,7 @@ import json
 import asyncio
 import time
 import math
+import re
 from datetime import datetime
 from typing import List, Optional, Dict, Union
 import aioserial
@@ -35,12 +36,9 @@ class SerialPortWrapper:
 	serial_port: AioSerial
 	failed_reads: int = 0
 
-	def __init__(self):
-		pass
-
 	async def connect_to_serial(self):
 		ports = list_ports.comports()
-		port = ports[0].device if len(ports) else None
+		port = next((item.device for item in ports if re.match(r'COM\d+', item.device) or re.match(r'ttyACM\d+', item.device)), None)
 		if port is None:
 			print(f"Could not find any serial device. Retrying in {RETRY_IN} seconds...")
 			await asyncio.sleep(RETRY_IN)
