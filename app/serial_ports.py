@@ -17,6 +17,7 @@ RTD_A = 3.9083e-3
 RTD_B = - 5.775e-7
 BAUD_RATE = 250_000
 MAX_FAILED_ATTEMPTS = 4
+RETRY_IN = 2
 
 
 def time_it(func):
@@ -41,13 +42,14 @@ class SerialPortWrapper:
 		ports = list_ports.comports()
 		port = ports[0].device if len(ports) else None
 		if port is None:
-			print("Could not find any serial device. Retrying in 2 seconds...")
-			await asyncio.sleep(2)
+			print(f"Could not find any serial device. Retrying in {RETRY_IN} seconds...")
+			await asyncio.sleep(RETRY_IN)
 			await self.connect_to_serial()
 		try:
 			self.serial_port: AioSerial = AioSerial(port=port, baudrate=BAUD_RATE, bytesize=8, timeout=2, stopbits=aioserial.STOPBITS_ONE)
 		except serial.SerialException as e:
 			print(e)
+			print(f"Retrying in {RETRY_IN} seconds...")
 			await asyncio.sleep(2)
 			await self.connect_to_serial()
 		return True
@@ -66,6 +68,7 @@ class SerialPortWrapper:
 			await asyncio.sleep(2)
 			return await self.read()
 		try:
+			print('message', message)
 			result = json.loads(message)
 			if type(result) is not list:
 				return message
@@ -126,7 +129,6 @@ class Readers:
 			if sensor_temp is None or pair_sensor_temp is None:
 				continue
 			delta = abs(sensor_temp['temperature'] - pair_sensor_temp['temperature'])
-			print(delta, slave_sensor.label, master_sensor.label)
 			relay = self.get_relay(slave_sensor.relay_id)
 			if relay is None:
 				continue
@@ -187,7 +189,7 @@ class Readers:
 				item['temperature'] = self.temp_from_rtd(item.get('rtd'), sensor)
 				result.append(item)
 			asyncio.create_task(self.save_db(result))
-			print(*result, sep='\n')
+			# print(*result, sep='\n')
 			asyncio.create_task(self.post_process(result))
 			self.__current_value = result
 
