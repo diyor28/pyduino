@@ -16,6 +16,7 @@ from app.gpio import Relay
 RTD_A = 3.9083e-3
 RTD_B = - 5.775e-7
 BAUD_RATE = 250_000
+MAX_FAILED_ATTEMPTS = 4
 
 
 def time_it(func):
@@ -58,7 +59,9 @@ class SerialPortWrapper:
 		except serial.SerialException as e:
 			print(e, self.serial_port.port)
 			self.failed_reads += 1
-			if self.failed_reads > 4:
+			if self.failed_reads > MAX_FAILED_ATTEMPTS:
+				print(f'more than {MAX_FAILED_ATTEMPTS} failed attempts. Retrying to connect.')
+				self.serial_port.close()
 				await self.connect_to_serial()
 			await asyncio.sleep(2)
 			return await self.read()
