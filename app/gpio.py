@@ -20,6 +20,10 @@ except ImportError:
 		def output(cls, pin, value):
 			print(pin, value)
 
+		@classmethod
+		def cleanup(cls):
+			print('CLEANING UP GPIO')
+
 GPIO.setmode(GPIO.BOARD)
 for pin_setup in [11, 13, 15, 16, 18, 22, 29, 31, 32, 33, 36, 37, 38]:
 	GPIO.setup(pin_setup, GPIO.OUT)

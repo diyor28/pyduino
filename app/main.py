@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.serial_ports import readers
 from app.routes import spis, relays, temperatures
+from app.gpio import GPIO
 
 app = FastAPI()
 app.include_router(spis)
@@ -26,6 +27,11 @@ app.add_middleware(
 async def run_reader():
 	asyncio.create_task(readers.setup())
 	asyncio.create_task(readers.run())
+
+
+@app.on_event('shutdown')
+async def clean_gpio():
+	GPIO.cleanup()
 
 
 @app.websocket('/ws')
