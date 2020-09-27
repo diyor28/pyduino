@@ -1,18 +1,19 @@
 from typing import Optional
 from datetime import datetime
+from .Sensor import ResponseValidator as SensorValidator
 from pydantic import BaseModel
 
 
 class InputValidator(BaseModel):
-	label: str
-	pin: int
-	disabled: Optional[bool]
+	temperature: float
+	recorded_at: str
+	sensor_id: int
+	sensor: SensorValidator
 
 
 class ResponseValidator(InputValidator):
+	recorded_at: datetime
 	id: str
-	created_at: datetime
-	updated_at: datetime
 
 	class Config:
 		orm_mode = True

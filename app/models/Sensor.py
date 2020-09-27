@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from datetime import datetime
 
 from app.database import Base
 
@@ -17,3 +19,6 @@ class Sensor(Base):
 	low_threshold = Column(Float)
 	high_threshold = Column(Float)
 	delta = Column(Float)
+	temperatures = relationship('Temperature', back_populates="sensor", lazy=True, cascade="all, delete-orphan")
+	created_at = Column(DateTime, default=datetime.now)
+	updated_at = Column(DateTime, onupdate=datetime.now)

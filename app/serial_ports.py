@@ -2,6 +2,7 @@ import json
 import asyncio
 import time
 import math
+import os
 import re
 from datetime import datetime
 from typing import List, Optional, Dict, Union
@@ -14,6 +15,7 @@ from app.database import get_db
 from app.models import Sensor, Temperature, Relays
 from app.gpio import Relay
 
+DEBUG = os.environ.get('DEBUG', False)
 RTD_A = 3.9083e-3
 RTD_B = - 5.775e-7
 BAUD_RATE = 250_000
@@ -53,7 +55,6 @@ class SerialPortWrapper:
 			await self.connect_to_serial()
 		return True
 
-	@time_it
 	async def read(self) -> Union[List[dict], str]:
 		try:
 			message: str = (await self.serial_port.readline_async()).decode('Ascii')
@@ -71,11 +72,12 @@ class SerialPortWrapper:
 			return await self.read()
 		finally:
 			if self.failed_reads > MAX_FAILED_ATTEMPTS:
-				print(f'more than {MAX_FAILED_ATTEMPTS} failed attempts. Retrying to connect.')
+				print(f'Reached maximum number({MAX_FAILED_ATTEMPTS}) of failed attempts. Retrying to connect.')
 				self.serial_port.close()
 				await self.connect_to_serial()
 		try:
-			print('message', message)
+			if DEBUG:
+				print('message', message)
 			result = json.loads(message)
 			if type(result) is not list:
 				return message
@@ -88,7 +90,7 @@ class SerialPortWrapper:
 class Readers:
 	sensors: List[Sensor]
 	relays: List[Relays]
-	__current_value: List[dict] = []
+	__current_value: asyncio.Future = asyncio.Future()
 
 	def __init__(self):
 		self.__running: bool = False
@@ -100,7 +102,7 @@ class Readers:
 		self.__running = await self.serial_port.connect_to_serial()
 
 	@classmethod
-	async def save_db(cls, data: List[dict]):
+	async def _save_db(cls, data: List[dict]):
 		db = get_db()
 		recorded_at = datetime.now().replace(second=0, microsecond=0)
 		for item in data:
@@ -112,23 +114,20 @@ class Readers:
 				db.add(instance)
 				db.commit()
 
-	def read_from_stream(self) -> List:
-		return self.__current_value
-
-	def get_sensor(self, pk: int) -> Union[None, Sensor]:
+	def _get_sensor(self, pk: int) -> Union[None, Sensor]:
 		return next((item for item in self.sensors if item.id == pk and not item.disabled), None)
 
-	def get_relay(self, pk: int) -> Union[None, Relays]:
+	def _get_relay(self, pk: int) -> Union[None, Relays]:
 		return next((item for item in self.relays if item.id == pk and not item.disabled), None)
 
-	async def post_process(self, readings: List[dict]):
+	async def _post_process(self, readings: List[dict]):
 		if not len(readings):
 			return
 		for reading in readings:
-			slave_sensor = self.get_sensor(reading['sensor_id'])
+			slave_sensor = self._get_sensor(reading['sensor_id'])
 			if slave_sensor is None or slave_sensor.pair is None:
 				continue
-			master_sensor = self.get_sensor(slave_sensor.pair)
+			master_sensor = self._get_sensor(slave_sensor.pair)
 			if master_sensor is None:
 				continue
 			sensor_temp = next((item for item in readings if item['sensor_id'] == slave_sensor.id), None)
@@ -136,7 +135,7 @@ class Readers:
 			if sensor_temp is None or pair_sensor_temp is None:
 				continue
 			delta = abs(sensor_temp['temperature'] - pair_sensor_temp['temperature'])
-			relay = self.get_relay(slave_sensor.relay_id)
+			relay = self._get_relay(slave_sensor.relay_id)
 			if relay is None:
 				continue
 			if delta > slave_sensor.delta:
@@ -145,7 +144,7 @@ class Readers:
 				Relay.turn_off(relay.pin)
 
 	@staticmethod
-	def temp_from_rtd(rtd: float, sensor: Sensor) -> float:
+	def _temp_from_rtd(rtd: float, sensor: Sensor) -> float:
 		rtd_nominal = sensor.sensor_type
 		ref_resistor = 430 * (rtd_nominal / 100)
 		rtd /= 32768
@@ -177,28 +176,41 @@ class Readers:
 		temp += 1.5243e-10 * rpoly
 		return temp
 
+	async def read_from_stream(self) -> List:
+		result = await self.__current_value
+		self.__current_value = asyncio.Future()
+		return result
+
+	async def _read(self) -> List:
+		sensors: List[Sensor] = [item for item in self.sensors if not item.disabled]
+		if not len(sensors):
+			await asyncio.sleep(2)
+
+		values: List[dict] = await self.serial_port.read()
+		if type(values) is str:
+			return []
+		result = []
+		for item in values:
+			sensor = next((el for el in sensors if el.pin == item['pin']), None)
+			if sensor is None:
+				continue
+			item['date'] = str(datetime.now())
+			item['sensor_id'] = sensor.id
+			item['label'] = sensor.label
+			item['temperature'] = self._temp_from_rtd(item.get('rtd'), sensor)
+			result.append(item)
+		return result
+
 	async def run(self):
 		while self.__running:
-			sensors: List[Sensor] = [item for item in self.sensors if not item.disabled]
-			if not len(sensors):
-				await asyncio.sleep(2)
-			values: List[dict] = await self.serial_port.read()
-			if type(values) is str:
-				continue
-			result = []
-			for item in values:
-				sensor = next((el for el in sensors if el.pin == item['pin']), None)
-				if sensor is None:
-					continue
-				item['date'] = str(datetime.now())
-				item['sensor_id'] = sensor.id
-				item['label'] = sensor.label
-				item['temperature'] = self.temp_from_rtd(item.get('rtd'), sensor)
-				result.append(item)
-			asyncio.create_task(self.save_db(result))
-			# print(*result, sep='\n')
-			asyncio.create_task(self.post_process(result))
-			self.__current_value = result
+			result = await self._read()
+			asyncio.create_task(self._save_db(result))
+			asyncio.create_task(self._post_process(result))
+			if self.__current_value.done():
+				self.__current_value = asyncio.Future()
+			self.__current_value.set_result(result)
+
+	# print(*result, sep='\n')
 
 	def stop(self):
 		self.__running = False

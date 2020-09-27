@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 
@@ -8,4 +9,5 @@ class Temperature(Base):
 	id = Column(Integer, primary_key=True, index=True)
 	temperature = Column(Float)
 	recorded_at = Column(DateTime, index=True)
-	sensor_id = Column(Integer, ForeignKey('sensors.id', ondelete='CASCADE'))
+	sensor_id = Column(Integer, ForeignKey('sensors.id'))
+	sensor = relationship('Sensor', back_populates="temperatures")

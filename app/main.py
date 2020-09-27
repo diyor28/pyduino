@@ -12,11 +12,9 @@ app.include_router(spis)
 app.include_router(relays)
 app.include_router(temperatures)
 
-origins = ["*"]
-
 app.add_middleware(
 	CORSMiddleware,
-	allow_origins=origins,
+	allow_origins=["*"],
 	allow_credentials=True,
 	allow_methods=["*"],
 	allow_headers=["*"],
@@ -38,6 +36,5 @@ async def clean_gpio():
 async def websocket_endpoint(websocket: WebSocket):
 	await websocket.accept()
 	while True:
-		data = readers.read_from_stream()
-		await asyncio.sleep(0.5)
+		data = await readers.read_from_stream()
 		await websocket.send_json(data)
