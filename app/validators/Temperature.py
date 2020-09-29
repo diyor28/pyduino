@@ -8,7 +8,7 @@ class InputValidator(BaseModel):
 	temperature: float
 	recorded_at: str
 	sensor_id: int
-	sensor: SensorValidator
+	sensor: Optional[SensorValidator]
 
 
 class ResponseValidator(InputValidator):

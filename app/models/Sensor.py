@@ -21,4 +21,4 @@ class Sensor(Base):
 	delta = Column(Float)
 	temperatures = relationship('Temperature', back_populates="sensor", lazy=True, cascade="all, delete-orphan")
 	created_at = Column(DateTime, default=datetime.now)
-	updated_at = Column(DateTime, onupdate=datetime.now)
+	updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

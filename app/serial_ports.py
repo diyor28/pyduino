@@ -58,23 +58,16 @@ class SerialPortWrapper:
 	async def read(self) -> Union[List[dict], str]:
 		try:
 			message: str = (await self.serial_port.readline_async()).decode('Ascii')
-		except serial.SerialException as e:
-			print(e, self.serial_port.port)
+		except (serial.SerialException, UnicodeDecodeError) as e:
+			print(e, self.serial_port.port, self.failed_reads)
 			print(f"Retrying in {RETRY_IN} seconds...")
 			self.failed_reads += 1
 			await asyncio.sleep(RETRY_IN)
-			return await self.read()
-		except UnicodeDecodeError as e:
-			print(e, self.serial_port.port)
-			print(f"Retrying in {RETRY_IN} seconds...")
-			self.failed_reads += 1
-			await asyncio.sleep(RETRY_IN)
-			return await self.read()
-		finally:
 			if self.failed_reads > MAX_FAILED_ATTEMPTS:
 				print(f'Reached maximum number({MAX_FAILED_ATTEMPTS}) of failed attempts. Retrying to connect.')
 				self.serial_port.close()
 				await self.connect_to_serial()
+			return await self.read()
 		try:
 			if DEBUG:
 				print('message', message)
@@ -189,6 +182,7 @@ class Readers:
 		values: List[dict] = await self.serial_port.read()
 		if type(values) is str:
 			return []
+		print(*values, sep='\n')
 		result = []
 		for item in values:
 			sensor = next((el for el in sensors if el.pin == item['pin']), None)
@@ -209,8 +203,6 @@ class Readers:
 			if self.__current_value.done():
 				self.__current_value = asyncio.Future()
 			self.__current_value.set_result(result)
-
-	# print(*result, sep='\n')
 
 	def stop(self):
 		self.__running = False
