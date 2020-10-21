@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.database import get_db, Session
 from app.models import Sensor
-from app.validators.Sensor import InputValidator, ResponseValidator
+from app.validators.Sensor import InputValidator, PatchValidator, ResponseValidator
 
 router = APIRouter()
 
@@ -28,7 +28,7 @@ async def create_sensor(data: InputValidator, db: Session = Depends(get_db)):
 
 
 @router.patch('/sensors/{pk}', response_model=ResponseValidator)
-async def patch_sensor(pk: str, data: InputValidator, db: Session = Depends(get_db)):
+async def patch_sensor(pk: str, data: PatchValidator, db: Session = Depends(get_db)):
 	instance = db.query(Sensor).get(pk)
 	for key, value in data.dict(exclude_unset=True).items():
 		setattr(instance, key, value)

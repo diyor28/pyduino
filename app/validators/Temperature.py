@@ -5,15 +5,15 @@ from pydantic import BaseModel
 
 
 class InputValidator(BaseModel):
-	temperature: float
-	recorded_at: str
-	sensor_id: int
+	temperature: Optional[float]
+	recorded_at: Optional[str]
+	sensor_id: Optional[int]
 	sensor: Optional[SensorValidator]
 
 
 class ResponseValidator(InputValidator):
 	recorded_at: datetime
-	id: str
+	id: int
 
 	class Config:
 		orm_mode = True

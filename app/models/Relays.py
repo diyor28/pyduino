@@ -11,5 +11,6 @@ class Relays(Base):
 	label = Column(String)
 	pin = Column(Integer, unique=True, index=True)
 	disabled = Column(Boolean, default=False)
+	fire_on_threshold = Column(Boolean, default=False)
 	created_at = Column(DateTime, default=datetime.now)
 	updated_at = Column(DateTime, onupdate=datetime.now)

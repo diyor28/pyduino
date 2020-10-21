@@ -16,6 +16,8 @@ class Sensor(Base):
 	relay_id = Column(Integer, ForeignKey('relays.id', ondelete='CASCADE'))
 	location = Column(String)
 	pair = Column(Integer)
+	wire_resistance = Column(Float, default=0.0)
+	correction_resistance = Column(Float, default=0.0)
 	low_threshold = Column(Float)
 	high_threshold = Column(Float)
 	delta = Column(Float)

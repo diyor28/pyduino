@@ -3,14 +3,18 @@ import asyncio
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.serial_ports import readers
-from app.routes import spis, relays, temperatures
+from app.processing import readers
+from app.routes import spis, relays, temperatures, exports, calibration
+from app.models import Sensor
 from app.gpio import GPIO
+from app.database import get_db
 
 app = FastAPI()
 app.include_router(spis)
 app.include_router(relays)
 app.include_router(temperatures)
+app.include_router(exports)
+app.include_router(calibration)
 
 app.add_middleware(
 	CORSMiddleware,
@@ -24,7 +28,6 @@ app.add_middleware(
 @app.on_event('startup')
 async def run_reader():
 	asyncio.create_task(readers.setup())
-	asyncio.create_task(readers.run())
 
 
 @app.on_event('shutdown')
@@ -37,6 +40,8 @@ async def websocket_endpoint(websocket: WebSocket):
 	await websocket.accept()
 	while True:
 		data = await readers.read_from_stream()
+		# data = [{'sensor_id': sensor.id, 'temperature': 27.53, 'pair': sensor.pair, 'relay_id': sensor.relay_id}
+		# 		for sensor in get_db().query(Sensor).all()]
 		try:
 			await websocket.send_json(data)
 		except Exception as e:

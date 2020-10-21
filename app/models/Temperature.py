@@ -9,5 +9,5 @@ class Temperature(Base):
 	id = Column(Integer, primary_key=True, index=True)
 	temperature = Column(Float)
 	recorded_at = Column(DateTime, index=True)
-	sensor_id = Column(Integer, ForeignKey('sensors.id'))
+	sensor_id = Column(Integer, ForeignKey('sensors.id', ondelete='CASCADE'))
 	sensor = relationship('Sensor', back_populates="temperatures")
