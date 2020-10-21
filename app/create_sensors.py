@@ -10,7 +10,9 @@ if __name__ == '__main__':
 	db = get_db()
 	for up_pin, down_pin, relay_pin in zip(up_sensors, down_sensors, relay_pins):
 		print('Adding sensor', up_pin, down_pin)
-		up_sensor = Sensor(pin=up_pin, sensor_type=1000, location='up')
+		up_sensor = Sensor(pin=up_pin, sensor_type=1000, location='up',
+						   high_threshold=30,
+						   low_threshold=20)
 		db.add(up_sensor)
 		relay_id = None
 		if relay_pin:
@@ -26,6 +28,6 @@ if __name__ == '__main__':
 					  delta=3,
 					  location='down',
 					  relay_id=relay_id))
-	db.add(Sensor(sensor_type=1000, pin=43, location='boiler'))
-	db.add(Sensor(sensor_type=1000, pin=44, location='street'))
+	db.add(Sensor(sensor_type=1000, pin=43, location='boiler', label='Котельная'))
+	db.add(Sensor(sensor_type=1000, pin=44, location='street', label='Улица'))
 	db.commit()
