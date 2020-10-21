@@ -1,7 +1,7 @@
 import asyncio
 import math
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 import serial
 from serial.tools import list_ports
@@ -10,25 +10,26 @@ from sqlalchemy import event, desc
 from app.database import get_db
 from app.models import Sensor, Temperature, Relays
 from app.gpio import Relay
-from app.settings import DEBUG, BAUD_RATE, RTD_A, RTD_B
+from app.settings import DEBUG, BAUD_RATE, RTD_A, RTD_B, RETRY_IN
 from app.serial_ports import SerialPortWrapper
 
 
 class Readers:
 	sensors: List[Sensor] = []
 	relays: List[Relays] = []
-	__current_value_promise: asyncio.Future = asyncio.Future()
+	__value_promise: asyncio.Future = asyncio.Future()
+	__error_message: str
+	__running: bool = True
 	__current_value: List[dict] = []
 
 	def __init__(self):
-		self.__running: bool = False
 		self.db = get_db()
 		self.serial_port: SerialPortWrapper = SerialPortWrapper()
 
 	async def setup(self):
 		self.sensors = self.db.query(Sensor).order_by(desc(Sensor.pin)).all()
 		self.relays = self.db.query(Relays).all()
-		self.__running = await self.serial_port.connect_to_serial()
+		await self.serial_port.connect_to_serial()
 		asyncio.create_task(self.run())
 
 	async def _save_db(self, data: List[dict]):
@@ -128,21 +129,22 @@ class Readers:
 		return resistance
 
 	@staticmethod
-	def _resistance_from_rtd(rtd: float, sensor: Sensor, ignore_correction=False):
+	def _resistance_from_rtd(rtd: float, sensor: Sensor):
 		ref_resistor = 430 * (sensor.sensor_type / 100)
 		wire_resistance = sensor.wire_resistance or 0
 		correction_resistance = sensor.correction_resistance or 0
-		if ignore_correction:
-			correction_resistance = 0
 		return ref_resistor * rtd / 32768 + wire_resistance + correction_resistance
 
-	async def _read(self) -> List:
+	async def _read(self) -> Tuple[List, str]:
+		if not self.serial_port.connected:
+			await asyncio.sleep(RETRY_IN)
+			return [], 'Не возможно подключиться к датчикам'
 		sensors: List[Sensor] = [item for item in self.sensors if not item.disabled]
 		if not len(sensors):
 			await asyncio.sleep(2)
-		values: List[dict] = await self.serial_port.read()
-		if type(values) is str:
-			return []
+			return [], 'Нет активных датчиков'
+		value: List[dict]
+		values, self.__error_message = await self.serial_port.read()
 		result = []
 		for item in values:
 			sensor = next((el for el in sensors if el.pin == item['pin']), None)
@@ -157,33 +159,31 @@ class Readers:
 		if DEBUG:
 			print(*[{item['pin']: [item['temperature'], item['resistance']]} for item in result], sep='\n')
 			print('\n' * 2)
-		return result
+		return result, ''
 
-	async def read_from_stream(self) -> List:
-		result = await self.__current_value_promise
-		self.__current_value_promise = asyncio.Future()
-		return result
+	async def read_from_stream(self) -> Tuple[List, str]:
+		result, error_message = await self.__value_promise
+		self.__value_promise = asyncio.Future()
+		return result, error_message
 
 	async def run(self):
 		while self.__running:
-			result = await self._read()
-			if not result:
-				continue
-			asyncio.create_task(self._save_db(result))
-			asyncio.create_task(self._post_process(result))
+			result, error_message = await self._read()
 			self.__current_value = result.copy()
-			if self.__current_value_promise.done():
-				self.__current_value_promise = asyncio.Future()
-			self.__current_value_promise.set_result(result)
+			if self.__value_promise.done():
+				self.__value_promise = asyncio.Future()
+			self.__value_promise.set_result((result, error_message))
+
+			if result:
+				asyncio.create_task(self._save_db(result))
+				asyncio.create_task(self._post_process(result))
 
 	async def calibrate(self, temperature: float):
-		print(len(self.__current_value))
 		for reading in self.__current_value:
 			sensor = self._get_sensor(reading['sensor_id'])
 			ref_resistance = self._resistance_from_temp(temperature, sensor)
 			correction_resistance = sensor.correction_resistance or 0
 			sensor.correction_resistance = round(ref_resistance - (reading['resistance'] - correction_resistance), 2)
-			print(sensor.correction_resistance, ref_resistance, reading['resistance'] - correction_resistance)
 		self.db.commit()
 
 	def stop(self):
