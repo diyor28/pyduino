@@ -34,7 +34,7 @@ class Readers:
 
 	async def _save_db(self, data: List[dict]):
 		date = datetime.utcnow()
-		recorded_at = date.replace(second=0, microsecond=0, minute=date.minute)
+		recorded_at = date.replace(minute=date.minute // 15, second=0, microsecond=0)
 		for item in data:
 			if not item.get('temperature'):
 				return

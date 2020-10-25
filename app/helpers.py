@@ -34,6 +34,8 @@ def group_temps(items, export=False):
 				prefix = LOCATIONS_MAP[value.sensor.location]
 				label = prefix + f"{value.sensor.pin} ({value.sensor.label})"
 				item[label] = value.temperature
+			# item[label + '.high_threshold'] = value.sensor.high_threshold
+			# item[label + '.low_threshold'] = value.sensor.low_threshold
 			else:
 				item[value.sensor_id] = value.temperature
 		item['recorded_at'] = key
@@ -65,5 +67,6 @@ def get_temps(db: Session = Depends(get_db),
 		skip *= len(all_sensor_ids)
 		limit *= len(all_sensor_ids)
 		result = group_temps(items.offset(skip).limit(limit).all())
-		return {'total': count / len(all_sensor_ids), 'data': result}
+		total = count / len(all_sensor_ids) if len(all_sensor_ids) else 0
+		return {'total': total, 'data': result}
 	return group_temps(items.all(), export=export)

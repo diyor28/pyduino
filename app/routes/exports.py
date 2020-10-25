@@ -18,6 +18,12 @@ from app.settings import BASE_DIR, DOWNLOADS_DIR
 router = APIRouter()
 
 
+def construct_df(items: List[dict]) -> pd.DataFrame:
+	df = pd.DataFrame(items)
+	df = df.rename(columns={'recorded_at': 'Дата'})
+	return df
+
+
 @router.get('/exports', response_model=List[ResponseValidator])
 async def get_export(db: Session = Depends(get_db)):
 	return db.query(Download).order_by(desc(Download.created_at)).all()
@@ -36,8 +42,7 @@ async def create_export(data: InputValidator, db: Session = Depends(get_db)):
 		os.mkdir(os.path.join(BASE_DIR, DOWNLOADS_DIR))
 	file_name = os.path.join(DOWNLOADS_DIR, uuid.uuid4().hex + '.xlsx')
 	full_path = os.path.join(BASE_DIR, file_name)
-	df = pd.DataFrame(items)
-	df = df.rename(columns={'recorded_at': 'Дата'})
+	df = construct_df(items)
 	print(df.head())
 	df.to_excel(full_path)
 	instance = Download(label=data.label, filename=file_name)

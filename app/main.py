@@ -1,10 +1,11 @@
 import asyncio
 
+import random
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.processing import readers
-from app.routes import spis, relays, temperatures, exports, calibration
+from app.routes import spis, relays, temperatures, exports, calibration, houses
 from app.models import Sensor
 from app.gpio import GPIO
 from app.database import get_db
@@ -15,6 +16,7 @@ app.include_router(relays)
 app.include_router(temperatures)
 app.include_router(exports)
 app.include_router(calibration)
+app.include_router(houses)
 
 app.add_middleware(
 	CORSMiddleware,
@@ -39,10 +41,13 @@ async def clean_gpio():
 async def websocket_endpoint(websocket: WebSocket):
 	await websocket.accept()
 	while True:
-		data, err = await readers.read_from_stream()
-		# data = [{'sensor_id': sensor.id, 'temperature': 27.53, 'pair': sensor.pair, 'relay_id': sensor.relay_id}
-		# 		for sensor in get_db().query(Sensor).all()]
+		# data, err = await readers.read_from_stream()
+		data = [{'sensor_id': sensor.id, 'temperature': round((22 + random.random() * 3), 1), 'pair': sensor.pair, 'relay_id': sensor.relay_id}
+				for sensor in get_db().query(Sensor).all()]
+		err = ''
+		await asyncio.sleep(1)
 		try:
 			await websocket.send_json({'data': data, 'err': err})
 		except Exception as e:
 			print(e)
+			return

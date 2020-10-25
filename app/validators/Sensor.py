@@ -9,6 +9,7 @@ class InputValidator(BaseModel):
 	sensor_type: int
 	location: str
 	wire_resistance: Optional[float]
+	house_id: Optional[int]
 	disabled: Optional[bool]
 	pair: Optional[int]
 	relay_id: Optional[int]

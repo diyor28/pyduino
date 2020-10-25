@@ -21,6 +21,7 @@ class Sensor(Base):
 	low_threshold = Column(Float)
 	high_threshold = Column(Float)
 	delta = Column(Float)
+	house_id = Column(Integer, ForeignKey('houses.id'))
 	temperatures = relationship('Temperature', back_populates="sensor", lazy=True, cascade="all, delete-orphan")
 	created_at = Column(DateTime, default=datetime.now)
 	updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
