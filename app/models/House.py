@@ -10,5 +10,6 @@ class House(Base):
 
 	id = Column(Integer, primary_key=True, index=True)
 	label = Column(String)
+	boilers = Column(Integer)
 	created_at = Column(DateTime, default=datetime.now)
 	updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

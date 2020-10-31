@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Callable, Dict, Any, List, Union, Set, Optional
+from typing import Callable, Dict, Any, List, Union, Set, Optional, TypedDict
 
 from fastapi import Query, Depends
 from datetime import datetime
@@ -9,10 +9,16 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Temperature
 
-LOCATIONS_MAP = {'up': 'ТВ-', 'down': 'ТН-', 'boiler': '', 'street': ''}
+LOCATIONS_MAP = {'up': 'ТВ', 'down': 'ТН', 'boiler': '', 'street': ''}
 
 
-def parse_date(date: str) -> Union[datetime, None]:
+class ExportItem(TypedDict):
+	temperature: float
+	high_threshold: float
+	low_threshold: float
+
+
+def parse_date(date: Optional[str]) -> Union[datetime, None]:
 	if not date:
 		return
 	return datetime.fromisoformat(date[:-1])
@@ -25,19 +31,28 @@ def group_by(values: list, func: Callable) -> Dict[Any, list]:
 	return dict(result)
 
 
-def group_temps(items, export=False):
+def group_temps(items: List[Temperature],
+				export: bool = False) -> Union[List[Dict[str, ExportItem]], List[Dict[int, float]]]:
 	result = []
+	key: str
+	values: List[Temperature]
 	for key, values in group_by(list(items), lambda x: x.recorded_at).items():
 		item = {}
 		for value in sorted(values, key=lambda x: x.sensor.pin):
 			if export:
 				prefix = LOCATIONS_MAP[value.sensor.location]
-				label = prefix + f"{value.sensor.pin} ({value.sensor.label})"
-				item[label] = value.temperature
-			# item[label + '.high_threshold'] = value.sensor.high_threshold
-			# item[label + '.low_threshold'] = value.sensor.low_threshold
+				suffix = f"({value.sensor.label})" if value.sensor.label else ""
+				label = f"{prefix}-{value.sensor.pin}" + suffix if prefix else value.sensor.label
+				item[label] = {
+					'temperature': value.temperature,
+					'high_threshold': value.sensor.high_threshold,
+					'low_threshold': value.sensor.low_threshold,
+					'house_id': value.sensor.house_id
+				}
 			else:
 				item[value.sensor_id] = value.temperature
+		if export:
+			item = {k: v for k, v in sorted(item.items(), key=lambda x: x[1]['house_id'] or -1, reverse=True)}
 		item['recorded_at'] = key
 		result.append(item)
 	return result
@@ -46,9 +61,9 @@ def group_temps(items, export=False):
 def get_temps(db: Session = Depends(get_db),
 			  skip: Optional[int] = Query(None),
 			  limit: Optional[int] = Query(None),
-			  sensor_ids: Set[int] = Query(None),
-			  start_date: str = Query(None),
-			  end_date: str = Query(None),
+			  sensor_ids: Optional[Set[int]] = Query(None),
+			  start_date: Optional[str] = Query(None),
+			  end_date: Optional[str] = Query(None),
 			  export=False):
 	items = db.query(Temperature).order_by(desc(Temperature.recorded_at))
 	start_date = parse_date(start_date)
@@ -66,7 +81,7 @@ def get_temps(db: Session = Depends(get_db),
 	if skip or limit:
 		skip *= len(all_sensor_ids)
 		limit *= len(all_sensor_ids)
-		result = group_temps(items.offset(skip).limit(limit).all())
-		total = count / len(all_sensor_ids) if len(all_sensor_ids) else 0
+		result = group_temps(items.offset(skip).limit(limit).all(), export=export)
+		total: int = count // len(all_sensor_ids) if len(all_sensor_ids) else 0
 		return {'total': total, 'data': result}
 	return group_temps(items.all(), export=export)

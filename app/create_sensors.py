@@ -32,6 +32,7 @@ if __name__ == '__main__':
 		db.add(Sensor(pin=down_pin,
 					  sensor_type=1000,
 					  pair=up_sensor.id,
+					  house_id=up_sensor.house_id,
 					  high_threshold=25,
 					  low_threshold=23,
 					  delta=3,

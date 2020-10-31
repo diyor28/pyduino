@@ -41,11 +41,7 @@ async def clean_gpio():
 async def websocket_endpoint(websocket: WebSocket):
 	await websocket.accept()
 	while True:
-		# data, err = await readers.read_from_stream()
-		data = [{'sensor_id': sensor.id, 'temperature': round((22 + random.random() * 3), 1), 'pair': sensor.pair, 'relay_id': sensor.relay_id}
-				for sensor in get_db().query(Sensor).all()]
-		err = ''
-		await asyncio.sleep(1)
+		data, err = await readers.read_from_stream()
 		try:
 			await websocket.send_json({'data': data, 'err': err})
 		except Exception as e:

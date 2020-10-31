@@ -34,7 +34,7 @@ class Readers:
 
 	async def _save_db(self, data: List[dict]):
 		date = datetime.utcnow()
-		recorded_at = date.replace(minute=date.minute // 3, second=0, microsecond=0)
+		recorded_at = date.replace(minute=date.minute, second=0, microsecond=0)
 		for item in data:
 			if not item.get('temperature'):
 				return
@@ -156,9 +156,9 @@ class Readers:
 			item['temperature'] = self._temp_from_rtd(item.get('rtd'), sensor)
 			item['resistance'] = self._resistance_from_rtd(item.get('rtd'), sensor)
 			result.append(item)
-		if DEBUG:
-			print(*[{item['pin']: [item['temperature'], item['resistance']]} for item in result], sep='\n')
-			print('\n' * 2)
+		# if DEBUG:
+		# 	print(*[{item['pin']: [item['temperature'], item['resistance']]} for item in result], sep='\n')
+		# 	print('\n' * 2)
 		return result, ''
 
 	async def read_from_stream(self) -> Tuple[List, str]:

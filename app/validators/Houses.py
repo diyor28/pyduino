@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class InputValidator(BaseModel):
 	label: str
+	boilers: int
 
 
 class ResponseValidator(InputValidator):
