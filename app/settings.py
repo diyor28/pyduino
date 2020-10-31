@@ -2,8 +2,8 @@ import os
 
 BASE_DIR = os.getcwd()
 DOWNLOADS_DIR = 'downloads'
-# DEBUG = os.environ.get('DEBUG', False)
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', False)
+# DEBUG = True
 RTD_A = 3.9083e-3
 RTD_B = - 5.775e-7
 BAUD_RATE = 250_000
