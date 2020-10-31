@@ -1,7 +1,7 @@
 import asyncio
 import os
 import uuid
-from typing import List, Union, Dict, Any, TypedDict, Tuple
+from typing import List, Union, Dict, Any, Tuple
 
 import pandas as pd
 import numpy as np
@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from xlsxwriter.worksheet import Worksheet
 
 from app.database import get_db, Session
-from app.helpers import get_temps, ExportItem
+from app.helpers import get_temps
 from app.models import Download, House, Sensor
 from app.validators.Download import InputValidator, ResponseValidator
 from app.settings import BASE_DIR, DOWNLOADS_DIR
@@ -23,12 +23,8 @@ router = APIRouter()
 colors = ['#a4caff', '#ffebb8', '#f09cff', '#c5fffa', '#9bffb5', '#ecffb2', '#ffa8d5', '#cabeff']
 
 
-class HouseMetaData(TypedDict):
-	count: int
-	house: House
 
-
-def highlight_cell(temp: ExportItem) -> str:
+def highlight_cell(temp: dict) -> str:
 	if temp is np.nan or type(temp) is not float:
 		return ''
 
@@ -41,13 +37,13 @@ def highlight_cell(temp: ExportItem) -> str:
 	return ''
 
 
-def obj_to_value(temp: ExportItem) -> Union[float, None]:
+def obj_to_value(temp: dict) -> Union[float, None]:
 	if temp is np.nan or type(temp) is not float:
 		return temp
 	return temp['temperature']
 
 
-async def save_to_excel(items: List[dict], house_counts: Dict[int, HouseMetaData], path: str):
+async def save_to_excel(items: List[dict], house_counts: Dict[int, dict], path: str):
 	result = pd.ExcelWriter(path)
 	df = pd.DataFrame(items).set_index('recorded_at')
 	df = df.reindex(df.index.rename('Дата'))

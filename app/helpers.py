@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Callable, Dict, Any, List, Union, Set, Optional, TypedDict
+from typing import Callable, Dict, Any, List, Union, Set, Optional
 
 from fastapi import Query, Depends
 from datetime import datetime
@@ -10,12 +10,6 @@ from app.database import get_db
 from app.models import Temperature
 
 LOCATIONS_MAP = {'up': 'ТВ', 'down': 'ТН', 'boiler': '', 'street': ''}
-
-
-class ExportItem(TypedDict):
-	temperature: float
-	high_threshold: float
-	low_threshold: float
 
 
 def parse_date(date: Optional[str]) -> Union[datetime, None]:
@@ -32,7 +26,7 @@ def group_by(values: list, func: Callable) -> Dict[Any, list]:
 
 
 def group_temps(items: List[Temperature],
-				export: bool = False) -> Union[List[Dict[str, ExportItem]], List[Dict[int, float]]]:
+				export: bool = False) -> Union[List[Dict[str, dict]], List[Dict[int, float]]]:
 	result = []
 	key: str
 	values: List[Temperature]
