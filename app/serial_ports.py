@@ -41,11 +41,7 @@ class SerialPortWrapper:
 		log(port)
 
 		try:
-			self.serial_port: AioSerial = AioSerial(port=port, baudrate=BAUD_RATE, bytesize=8, timeout=2, stopbits=aioserial.STOPBITS_ONE,
-													xonxoff=False,
-													rtscts=False,
-													dsrdtr=False,
-													writeTimeout=2)
+			self.serial_port: AioSerial = AioSerial(port=port, baudrate=BAUD_RATE, bytesize=8, timeout=2, stopbits=aioserial.STOPBITS_ONE)
 			log('SERIAL_PORT STATE::', self.serial_port.isOpen())
 			self.connected = True
 		except serial.SerialException as e:
@@ -57,7 +53,7 @@ class SerialPortWrapper:
 
 	async def read(self) -> Tuple[List[dict], str]:
 		try:
-			log('SERIAL_PORT STATE::', self.serial_port.isOpen())
+			log('SERIAL PORT STATE::', self.serial_port.isOpen())
 			message: str = (await self.serial_port.readline_async()).decode('Ascii')
 		except (serial.SerialException, UnicodeDecodeError) as e:
 			print(e, f"Failed to read of port {self.serial_port.port}. Failed reads {self.failed_reads}. Retrying in {RETRY_IN} seconds...")
@@ -65,12 +61,13 @@ class SerialPortWrapper:
 			await asyncio.sleep(RETRY_IN)
 			if self.failed_reads > MAX_FAILED_ATTEMPTS:
 				print(f'Reached maximum number({MAX_FAILED_ATTEMPTS}) of failed attempts. Retrying to connect.')
-				self.serial_port.close()
+				# self.serial_port.close()
 				asyncio.create_task(self.connect_to_serial())
+				self.failed_reads = 0
 				return [], 'Попытка переподключиться к датчикам'
 			return [], 'Не удалось считать данные с сенсора'
 		try:
-			log('message', message)
+			log('message', message, verbose=2)
 			result = json.loads(message)
 			if type(result) is not list:
 				return [], 'Датчик отправляет искаженные данные'
