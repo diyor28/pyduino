@@ -10,7 +10,7 @@ from sqlalchemy import event, desc
 from app.database import get_db
 from app.models import Sensor, Temperature, Relays
 from app.gpio import Relay
-from app.settings import DEBUG, BAUD_RATE, RTD_A, RTD_B, RETRY_IN
+from app.settings import BAUD_RATE, RTD_A, RTD_B, RETRY_IN
 from app.serial_ports import SerialPortWrapper
 
 
