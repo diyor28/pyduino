@@ -3,41 +3,74 @@ from app.models import Sensor, Relays, House
 from app.database import get_db
 import random
 
-up_sensors = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27]
-down_sensors = [28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42]
-relay_pins = [8, 10, 12, 11, 13, 15, 16, 18, 22, 29, 31, 32, 33, 36, 37]
-houses = [1, 2, 3]
+# 1 (4, 10)
+# 2 (4, 10)
+# 3 (1, 4)
+
+HIGH_THRESHOLD = 27
+LOW_THRESHOLD = 22
+
+houses = [
+	{
+		'label': 'Теплица 1',
+		'sensors': [
+			{'up': 2, 'down': [11, 12], 'relay': 8},
+			{'up': 3, 'down': [13, 22], 'relay': 10},
+			{'up': 4, 'down': [23, 24, 25], 'relay': 11},
+			{'up': 5, 'down': [26, 27, 28], 'relay': 12}
+		]
+	},
+	{
+		'label': 'Теплица 2',
+		'sensors': [
+			{'up': 6, 'down': [29, 30], 'relay': 13},
+			{'up': 7, 'down': [31, 32], 'relay': 15},
+			{'up': 8, 'down': [33, 34, 35], 'relay': 16},
+			{'up': 9, 'down': [36, 37, 38], 'relay': 18}
+		]
+	},
+	{
+		'label': 'Теплица 3',
+		'sensors': [
+			{'up': 10, 'down': [39, 40, 41, 42]}
+		]
+	}
+]
 
 if __name__ == '__main__':
 	db = get_db()
-	house_instances = []
-	for house in houses:
-		house_instances.append(House(label='Теплица ' + str(house)))
-	db.add_all(house_instances)
-	db.commit()
 
-	for up_pin, down_pin, relay_pin in zip(up_sensors, down_sensors, relay_pins):
-		print('Adding sensor', up_pin, down_pin, relay_pin)
-		up_sensor = Sensor(pin=up_pin, sensor_type=1000, location='up',
-						   house_id=random.choice(house_instances).id,
-						   high_threshold=25,
-						   low_threshold=23)
-		db.add(up_sensor)
-		relay_id = None
-		if relay_pin:
-			relay = Relays(label='Сенсор ' + str(down_pin), pin=relay_pin)
-			db.add(relay)
-			relay_id = relay.id
+	for house in houses:
+		house_instance = House(label=house['label'])
+		db.add(house_instance)
 		db.commit()
-		db.add(Sensor(pin=down_pin,
-					  sensor_type=1000,
-					  pair=up_sensor.id,
-					  house_id=up_sensor.house_id,
-					  high_threshold=25,
-					  low_threshold=23,
-					  delta=3,
-					  location='down',
-					  relay_id=relay_id))
+		for sensor in house['sensors']:
+			up_sensor = Sensor(pin=sensor['up'],
+							   sensor_type=1000,
+							   location='up',
+							   house_id=house_instance.id,
+							   high_threshold=HIGH_THRESHOLD,
+							   low_threshold=LOW_THRESHOLD)
+			db.add(up_sensor)
+			db.commit()
+			relay_id = None
+			if sensor.get('relay'):
+				relay = Relays(label='Реле ' + str(sensor['relay']), pin=sensor['relay'])
+				db.add(relay)
+				db.commit()
+				relay_id = relay.id
+			for down_pin in sensor['down']:
+				db.add(Sensor(pin=down_pin,
+							  sensor_type=1000,
+							  pair=up_sensor.id,
+							  house_id=house_instance.id,
+							  high_threshold=HIGH_THRESHOLD,
+							  low_threshold=LOW_THRESHOLD,
+							  delta=3,
+							  location='down',
+							  relay_id=relay_id))
+				db.commit()
+
 	db.add(Sensor(sensor_type=1000, pin=43, location='boiler', label='Котельная'))
 	db.add(Sensor(sensor_type=1000, pin=44, location='street', label='Улица'))
 	db.commit()

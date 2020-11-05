@@ -1,3 +1,5 @@
+from app.settings import log
+
 try:
 	import RPi.GPIO as GPIO
 except ImportError:
@@ -13,19 +15,19 @@ except ImportError:
 
 		@classmethod
 		def setup(cls, pin, pin_type):
-			print(pin, pin_type)
+			log(pin, pin_type)
 			pass
 
 		@classmethod
 		def output(cls, pin, value):
-			print(pin, value)
+			log(pin, value)
 
 		@classmethod
 		def cleanup(cls):
-			print('CLEANING UP GPIO')
+			log('CLEANING UP GPIO')
 
 GPIO.setmode(GPIO.BOARD)
-for pin_setup in [8, 10, 12, 11, 13, 15, 16, 18, 22, 29, 31, 32, 33, 36, 37, 38]:
+for pin_setup in [8, 10, 12, 11, 13, 15, 16, 18]:
 	GPIO.setup(pin_setup, GPIO.OUT)
 	GPIO.output(pin_setup, GPIO.HIGH)
 

@@ -12,7 +12,8 @@ SessionLocal: sessionmaker = sessionmaker(autocommit=False, autoflush=False, bin
 
 Base = declarative_base()
 
+db: Session = SessionLocal()
+
 
 def get_db() -> Session:
-	db: Session = SessionLocal()
 	return db

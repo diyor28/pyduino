@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models import Sensor, Temperature, Relays
 from app.gpio import Relay
 from app.settings import BAUD_RATE, RTD_A, RTD_B, RETRY_IN
-from app.serial_ports import SerialPortWrapper
+from app.serial_port_simulator import SerialPortWrapper
 
 
 class Readers:
@@ -34,7 +34,7 @@ class Readers:
 
 	async def _save_db(self, data: List[dict]):
 		date = datetime.utcnow()
-		recorded_at = date.replace(minute=date.minute, second=0, microsecond=0)
+		recorded_at = date.replace(minute=(date.minute // 15) * 15, second=0, microsecond=0)
 		for item in data:
 			if not item.get('temperature'):
 				return
@@ -163,7 +163,6 @@ class Readers:
 
 	async def read_from_stream(self) -> Tuple[List, str]:
 		result, error_message = await self.__value_promise
-		self.__value_promise = asyncio.Future()
 		return result, error_message
 
 	async def run(self):
