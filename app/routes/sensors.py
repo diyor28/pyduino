@@ -1,5 +1,5 @@
 import asyncio
-from typing import Union
+from typing import Union, List
 
 from fastapi import APIRouter, Depends
 
@@ -11,10 +11,11 @@ router = APIRouter()
 
 
 async def patch_pair_sensor(db: Session, instance: Sensor):
-	pair_sensor: Union[Sensor, None] = db.query(Sensor).filter(Sensor.pair == instance.id).one_or_none()
-	if not pair_sensor:
+	pair_sensors: Union[List[Sensor], None] = db.query(Sensor).filter(Sensor.pair == instance.id).all()
+	if not pair_sensors:
 		return
-	pair_sensor.house_id = instance.house_id
+	for pair_sensor in pair_sensors:
+		pair_sensor.house_id = instance.house_id
 	db.commit()
 
 
@@ -27,7 +28,7 @@ async def find_sensors(db: Session = Depends(get_db)):
 
 
 @router.get('/sensors/{pk}')
-async def get_sensor(pk: str, db: Session = Depends(get_db)):
+async def get_sensor(pk: int, db: Session = Depends(get_db)):
 	item = db.query(Sensor).get(pk)
 	item.count = db.query(Sensor).filter(Sensor.pair == item.id).count()
 	return item
@@ -43,17 +44,18 @@ async def create_sensor(data: InputValidator, db: Session = Depends(get_db)):
 
 
 @router.patch('/sensors/{pk}', response_model=ResponseValidator)
-async def patch_sensor(pk: str, data: PatchValidator, db: Session = Depends(get_db)):
+async def patch_sensor(pk: int, data: PatchValidator, db: Session = Depends(get_db)):
 	instance = db.query(Sensor).get(pk)
 	for key, value in data.dict(exclude_unset=True).items():
 		setattr(instance, key, value)
 	db.commit()
+	print(data.dict(exclude_unset=True))
 	asyncio.create_task(patch_pair_sensor(db, instance))
 	return instance
 
 
 @router.delete('/sensors/{pk}', response_model=ResponseValidator)
-async def delete_sensor(pk: str, db: Session = Depends(get_db)):
+async def delete_sensor(pk: int, db: Session = Depends(get_db)):
 	instance = db.query(Sensor).get(pk)
 	db.delete(instance)
 	db.commit()

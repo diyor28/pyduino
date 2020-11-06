@@ -14,13 +14,13 @@ async def find_houses(db: Session = Depends(get_db)):
 
 
 @router.get('/houses/{pk}')
-async def get_sensor(pk: str, db: Session = Depends(get_db)):
+async def get_house(pk: int, db: Session = Depends(get_db)):
 	item = db.query(House).get(pk)
 	return item
 
 
 @router.post('/houses', response_model=ResponseValidator)
-async def create_sensor(data: InputValidator, db: Session = Depends(get_db)):
+async def create_house(data: InputValidator, db: Session = Depends(get_db)):
 	instance = House(**data.dict(exclude_unset=True))
 	db.add(instance)
 	db.commit()
@@ -28,7 +28,7 @@ async def create_sensor(data: InputValidator, db: Session = Depends(get_db)):
 
 
 @router.patch('/houses/{pk}', response_model=ResponseValidator)
-async def patch_sensor(pk: str, data: InputValidator, db: Session = Depends(get_db)):
+async def patch_house(pk: int, data: InputValidator, db: Session = Depends(get_db)):
 	instance = db.query(House).get(pk)
 	for key, value in data.dict(exclude_unset=True).items():
 		setattr(instance, key, value)
@@ -37,7 +37,7 @@ async def patch_sensor(pk: str, data: InputValidator, db: Session = Depends(get_
 
 
 @router.delete('/houses/{pk}', response_model=ResponseValidator)
-async def delete_sensor(pk: str, db: Session = Depends(get_db)):
+async def delete_house(pk: int, db: Session = Depends(get_db)):
 	instance = db.query(House).get(pk)
 	db.delete(instance)
 	db.commit()

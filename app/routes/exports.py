@@ -106,7 +106,7 @@ async def create_export(data: InputValidator, db: Session = Depends(get_db)):
 
 
 @router.delete('/exports/{pk}', response_model=ResponseValidator)
-async def delete_export(pk: str, db: Session = Depends(get_db)):
+async def delete_export(pk: int, db: Session = Depends(get_db)):
 	instance: Download = db.query(Download).get(pk)
 	db.delete(instance)
 	db.commit()
@@ -115,7 +115,7 @@ async def delete_export(pk: str, db: Session = Depends(get_db)):
 
 
 @router.get('/download/{pk}/')
-async def download_excel(pk: str, db: Session = Depends(get_db)):
+async def download_excel(pk: int, db: Session = Depends(get_db)):
 	download: Download = db.query(Download).get(pk)
 	filename = download.label + '.xlsx'
 	return FileResponse(os.path.join(BASE_DIR, download.filename),

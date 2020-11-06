@@ -14,7 +14,7 @@ async def find_relays(db: Session = Depends(get_db)):
 
 
 @router.get('/relays/{pk}')
-async def get_relay(pk: str, db: Session = Depends(get_db)):
+async def get_relay(pk: int, db: Session = Depends(get_db)):
 	item = db.query(Relays).get(pk)
 	return item
 
@@ -28,7 +28,7 @@ async def create_relay(data: InputValidator, db: Session = Depends(get_db)):
 
 
 @router.patch('/relays/{pk}', response_model=ResponseValidator)
-async def patch_relay(pk: str, data: InputValidator, db: Session = Depends(get_db)):
+async def patch_relay(pk: int, data: InputValidator, db: Session = Depends(get_db)):
 	instance = db.query(Relays).get(pk)
 	for key, value in data.dict(exclude_unset=True).items():
 		setattr(instance, key, value)
@@ -37,7 +37,7 @@ async def patch_relay(pk: str, data: InputValidator, db: Session = Depends(get_d
 
 
 @router.delete('/relays/{pk}', response_model=ResponseValidator)
-async def delete_relay(pk: str, db: Session = Depends(get_db)):
+async def delete_relay(pk: int, db: Session = Depends(get_db)):
 	instance = db.query(Relays).get(pk)
 	db.delete(instance)
 	db.commit()
