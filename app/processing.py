@@ -12,6 +12,7 @@ from app.models import Sensor, Temperature, Relays
 from app.gpio import Relay
 from app.settings import BAUD_RATE, RTD_A, RTD_B, RETRY_IN
 from app.serial_ports import SerialPortWrapper
+# from app.serial_port_simulator import SerialPortWrapper
 
 
 class Readers:
